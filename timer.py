@@ -26,6 +26,7 @@ class Timer:
         self.actual_seconds = 0
         self.user_decision = None
         self.decision_lock = threading.Lock()
+        self.prompt_timeout = 30  # Seconds to wait for user input
 
     def render_large_time(self, time_str, negative=False):
         lines = [""] * 5  # Each digit representation has 5 lines
@@ -41,32 +42,54 @@ class Timer:
             lines = [f"\033[1m{line}\033[0m" for line in lines]
         return lines
 
-    def listen_for_input(self):
-        # Function to listen for 'y' or 'n' input in a separate thread
-        while self.user_decision is None:
+    def prompt_user(self):
+        # Function to prompt the user when time is up
+        print(f"\nTime is up for '{self.task_name}'.")
+        print("Did you finish the task? (y/n): ", end='', flush=True)
+        start_time = time.time()
+        while time.time() - start_time < self.prompt_timeout:
             if os.name == 'nt':
                 # For Windows
                 import msvcrt
                 if msvcrt.kbhit():
                     key = msvcrt.getwch().lower()
-                    if key == 'y':
+                    if key in ['y', 'n']:
                         with self.decision_lock:
-                            self.user_decision = True
-                    elif key == 'n':
-                        with self.decision_lock:
-                            self.user_decision = False
+                            self.user_decision = (key == 'y')
+                        break
             else:
                 # For Unix/Linux
                 dr, dw, de = select.select([sys.stdin], [], [], 0)
                 if dr:
                     response = sys.stdin.readline().strip().lower()
-                    with self.decision_lock:
-                        if response == 'y':
-                            self.user_decision = True
-                        elif response == 'n':
-                            self.user_decision = False
-                else:
-                    time.sleep(0.1)
+                    if response in ['y', 'n']:
+                        with self.decision_lock:
+                            self.user_decision = (response == 'y')
+                        break
+            time.sleep(0.1)
+        else:
+            print("\nNo response received. Continuing the timer.")
+
+    def listen_for_input(self):
+        # Function to listen for 'y' or 'n' input during the timer
+        while True:
+            if os.name == 'nt':
+                # For Windows
+                import msvcrt
+                if msvcrt.kbhit():
+                    key = msvcrt.getwch().lower()
+                    if key in ['y', 'n']:
+                        with self.decision_lock:
+                            self.user_decision = (key == 'y')
+            else:
+                # For Unix/Linux
+                dr, dw, de = select.select([sys.stdin], [], [], 0)
+                if dr:
+                    response = sys.stdin.readline().strip().lower()
+                    if response in ['y', 'n']:
+                        with self.decision_lock:
+                            self.user_decision = (response == 'y')
+            time.sleep(0.1)
 
     def start(self):
         # Start the input listener thread
@@ -76,7 +99,7 @@ class Timer:
 
         time_up = False
         try:
-            while self.user_decision is None:
+            while True:
                 remaining_seconds = int(self.total_seconds)
                 if remaining_seconds >= 0:
                     remaining_time = str(timedelta(seconds=remaining_seconds))
@@ -95,27 +118,25 @@ class Timer:
                 columns, lines_terminal = os.get_terminal_size()
                 # Calculate padding to center the large time
                 content_height = len(large_time_lines) + 1  # Timer lines + 1 for task name
-                # Calculate the space below the timer display
                 space_below_timer = lines_terminal - content_height
-                # Calculate padding to place the task name in the middle between timer and bottom
                 padding_top = (lines_terminal - content_height) // 2 - len(large_time_lines)
                 padding_top = max(0, padding_top)
                 print('\n' * padding_top)
                 for line in large_time_lines:
                     print(line.center(columns))
-                # Calculate padding between timer and task name
                 padding_between = (space_below_timer - padding_top) // 2
                 print('\n' * padding_between)
-                # Display the task name in uppercase under the time
                 task_text = f"TASK: {self.task_name.upper()}"
                 task_text = f"\033[1m{task_text}\033[0m"  # Make it bold
                 print(task_text.center(columns))
 
-                # Send notification once when time is up
+                # Send notification and prompt at time zero
                 if not time_up and self.total_seconds <= 0:
                     send_notification(self.task_name)
+                    self.prompt_user()
                     time_up = True
 
+                # Continue the timer regardless
                 time.sleep(UPDATE_INTERVAL)
                 self.total_seconds -= UPDATE_INTERVAL
                 self.actual_seconds += UPDATE_INTERVAL
@@ -127,7 +148,7 @@ class Timer:
             self._finalize()
 
     def _finalize(self):
-        # Use the decision made by the user
+        # Use the last decision made by the user
         if self.user_decision is not None:
             completed = self.user_decision
         else:
@@ -149,4 +170,4 @@ class Timer:
         if CLEAR_SCREEN:
             os.system('clear' if os.name == 'posix' else 'cls')
         columns, _ = os.get_terminal_size()
-        print(f"{self.task_name} - Time's up!".center(columns))
+        print(f"{self.task_name} - Timer stopped.".center(columns))
