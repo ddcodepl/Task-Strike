@@ -13,6 +13,7 @@ from queries import (
     INSERT_TODO_TASK,
     SELECT_TODO_LIST,
     DELETE_TODO_TASK,
+    DELETE_TASK,               # Import the new DELETE_TASK query
 )
 from config import DB_PATH
 
@@ -83,13 +84,21 @@ def fetch_task_history():
         rows = cursor.fetchall()
         task_history = [
             Task(
-                task_name=row[0],
-                start_time=datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S"),
-                end_time=datetime.strptime(row[2], "%Y-%m-%d %H:%M:%S"),
-                initial_duration=row[3],
-                actual_duration=row[4],
-                status=row[5],
+                id=row[0],  # Include the task ID
+                task_name=row[1],
+                start_time=datetime.strptime(row[2], "%Y-%m-%d %H:%M:%S"),
+                end_time=datetime.strptime(row[3], "%Y-%m-%d %H:%M:%S"),
+                initial_duration=row[4],
+                actual_duration=row[5],
+                status=row[6],
             )
             for row in rows
         ]
         return task_history
+
+# New function to delete a task by ID
+def delete_task_by_id(task_id):
+    with connect_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(DELETE_TASK, (task_id,))
+        conn.commit()

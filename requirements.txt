@@ -1,3 +1,5 @@
-toml==0.10.2
-plyer==2.0.0
-tabulate==0.8.9
+toml>=0.10.2
+plyer>=2.0.0
+tabulate>=0.8.9
+pync>=2.0.3       # For macOS notifications
+inputimeout>=1.0.4  # For input timeout handling

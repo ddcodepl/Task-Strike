@@ -8,6 +8,8 @@ auto_start_breaks = false   # Automatically start breaks after tasks
 [display]
 clear_screen = true         # Clear screen on each update
 theme = "default"           # Display theme (e.g., "default", "dark", "light")
+font = "standard"           # Font used for big numbers (options provided by pyfiglet)
+max_width = 80              # Maximum width for the countdown display
 
 [logging]
 level = "INFO"              # Logging level (e.g., "DEBUG", "INFO", "WARNING", "ERROR")
@@ -17,6 +19,9 @@ log_file = "taskstrike.log" # Log file path (leave empty for console output)
 enable = true               # Enable or disable notifications
 sound = true                # Enable or disable sound notifications
 popup_duration = 10         # Duration of popup notifications in seconds
+
+[input]
+single_keypress = true      # Enable or disable single key press for prompts
 
 [database]
 type = "sqlite"             # Database type (e.g., "sqlite", "postgresql")

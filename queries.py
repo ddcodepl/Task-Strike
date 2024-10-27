@@ -17,10 +17,17 @@ INSERT INTO tasks (task_name, start_time, end_time, initial_duration, actual_dur
 VALUES (?, ?, ?, ?, ?, ?)
 '''
 
+# Updated to include 'id'
 SELECT_TASK_HISTORY = '''
-SELECT task_name, start_time, end_time, initial_duration, actual_duration, status FROM tasks
+SELECT id, task_name, start_time, end_time, initial_duration, actual_duration, status FROM tasks
 '''
 
+# New query to delete a task by ID
+DELETE_TASK = '''
+DELETE FROM tasks WHERE id = ?
+'''
+
+# Existing queries for todo functionality
 CREATE_TODO_TABLE = '''
 CREATE TABLE IF NOT EXISTS todo (
     id INTEGER PRIMARY KEY,

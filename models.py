@@ -5,6 +5,7 @@ from datetime import datetime
 
 @dataclass
 class Task:
+    id: int                    # Added task ID
     task_name: str
     start_time: datetime
     end_time: datetime

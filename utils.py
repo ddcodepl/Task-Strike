@@ -2,10 +2,17 @@
 
 import os
 import time
-from shutil import get_terminal_size
-from plyer import notification
-from config import NOTIFICATIONS_ENABLED, SOUND_ENABLED, POPUP_DURATION
+import sys
 import logging
+from shutil import get_terminal_size
+from config import NOTIFICATIONS_ENABLED, SOUND_ENABLED, POPUP_DURATION
+import platform
+
+if platform.system() == 'Darwin':
+    # We're on macOS
+    from pync import Notifier
+else:
+    from plyer import notification
 
 def center_text(text):
     columns, lines = get_terminal_size()
@@ -15,14 +22,28 @@ def center_text(text):
 
 def send_notification(task_name):
     if NOTIFICATIONS_ENABLED:
-        notification.notify(
-            title="TaskStrike Timer",
-            message=f"{task_name} - Time's up!",
-            timeout=POPUP_DURATION
-        )
-        if SOUND_ENABLED:
-            # Implement sound notification (platform-dependent)
-            pass
+        try:
+            if platform.system() == 'Darwin':
+                # Use pync for macOS
+                Notifier.notify(
+                    message=f"{task_name} - Time's up!",
+                    title="TaskStrike Timer",
+                    sound='default' if SOUND_ENABLED else None,
+                    activate='com.apple.Terminal'  # Replace with your app's bundle ID if needed
+                )
+            else:
+                # Use plyer for other platforms
+                notification.notify(
+                    title="TaskStrike Timer",
+                    message=f"{task_name} - Time's up!",
+                    timeout=POPUP_DURATION
+                )
+                if SOUND_ENABLED:
+                    # Implement sound notification if needed
+                    pass
+        except Exception as e:
+            logging.error(f"Notification failed: {e}")
+            print(f"Notification failed: {e}")
 
 def format_time(seconds):
     return time.strftime("%H:%M:%S", time.gmtime(seconds))
