@@ -1,0 +1,23 @@
+[settings]
+default_duration = 25       # Default task duration in minutes
+
+[timer]
+update_interval = 1         # Update interval in seconds
+auto_start_breaks = false   # Automatically start breaks after tasks
+
+[display]
+clear_screen = true         # Clear screen on each update
+theme = "default"           # Display theme (e.g., "default", "dark", "light")
+
+[logging]
+level = "INFO"              # Logging level (e.g., "DEBUG", "INFO", "WARNING", "ERROR")
+log_file = "taskstrike.log" # Log file path (leave empty for console output)
+
+[notifications]
+enable = true               # Enable or disable notifications
+sound = true                # Enable or disable sound notifications
+popup_duration = 10         # Duration of popup notifications in seconds
+
+[database]
+type = "sqlite"             # Database type (e.g., "sqlite", "postgresql")
+path = "task_manager.db"    # Database path or connection string
