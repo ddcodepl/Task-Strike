@@ -25,4 +25,4 @@ single_keypress = true      # Enable or disable single key press for prompts
 
 [database]
 type = "sqlite"             # Database type (e.g., "sqlite", "postgresql")
-path = "task_manager.db"    # Database path or connection string
+path = "data/task_manager.db"    # Database path or connection string
