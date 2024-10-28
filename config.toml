@@ -13,7 +13,7 @@ max_width = 80              # Maximum width for the countdown display
 
 [logging]
 level = "INFO"              # Logging level (e.g., "DEBUG", "INFO", "WARNING", "ERROR")
-log_file = "taskstrike.log" # Log file path (leave empty for console output)
+log_file = "logs/taskstrike.log" # Log file path (leave empty for console output)
 
 [notifications]
 enable = true               # Enable or disable notifications
