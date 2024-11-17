@@ -95,6 +95,7 @@ python main.py "Write Report" 30         # Starts a 30-minute timer for "Write R
 python main.py --add-task "Review PR" 20 # Adds "Review PR" to the to-do list with a 20-minute duration
 python main.py --show-todo               # Displays all to-do tasks
 python main.py --show-history            # Displays the task history
+python main.py --prune-db                # Deletes all tasks from the task history
 ```
 
 ## Project Structure

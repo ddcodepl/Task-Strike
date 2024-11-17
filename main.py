@@ -4,6 +4,8 @@
 
 import argparse
 import logging
+import os
+import sys
 from tabulate import tabulate
 from db import (
     initialize_db,
@@ -17,6 +19,7 @@ from config import (
     DEFAULT_DURATION,
     LOG_LEVEL,
     LOG_FILE,
+    DB_PATH,  # Import DB_PATH to handle pruning
 )
 from models import Task, Todo
 
@@ -29,6 +32,7 @@ logging.basicConfig(
     filename=LOG_FILE if LOG_FILE else None,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
 
 def parse_duration(duration_str):
     try:
@@ -49,6 +53,7 @@ def parse_duration(duration_str):
     except ValueError:
         raise argparse.ArgumentTypeError(f"Invalid duration format: '{duration_str}'. Use MM or MM:SS.")
 
+
 def add_task(task_name, duration_input):
     if task_name and duration_input:
         try:
@@ -56,10 +61,12 @@ def add_task(task_name, duration_input):
             duration_minutes = total_seconds / 60
             add_task_to_todo(task_name, duration_minutes)
             print(f"Task '{task_name}' added to the to-do list.")
+            logging.info(f"Added task '{task_name}' with duration {duration_minutes} minutes.")
         except argparse.ArgumentTypeError as e:
             print(e)
     else:
         print("Please provide both a task name and duration to add a task.")
+
 
 def show_history():
     tasks = fetch_task_history()
@@ -68,9 +75,9 @@ def show_history():
             task.id,
             task.task_name,
             task.start_time.strftime("%Y-%m-%d %H:%M:%S"),
-            task.end_time.strftime("%Y-%m-%d %H:%M:%S"),
+            task.end_time.strftime("%Y-%m-%d %H:%M:%S") if task.end_time else "N/A",
             f"{task.initial_duration:.2f}",
-            f"{task.actual_duration:.2f}",
+            f"{task.actual_duration:.2f}" if task.actual_duration else "N/A",
             task.status,
         ]
         for task in tasks
@@ -84,13 +91,14 @@ def show_history():
                 "Task Name",
                 "Start Time",
                 "End Time",
-                "Initial Duration",
-                "Actual Duration",
+                "Initial Duration (min)",
+                "Actual Duration (min)",
                 "Status",
             ],
             tablefmt="fancy_grid",
         )
     )
+
 
 def show_todo_list():
     todo_list = fetch_todo_list()
@@ -111,41 +119,77 @@ def show_todo_list():
         )
     )
 
+
 def delete_task(task_id):
     confirm = input(f"Are you sure you want to delete task ID {task_id}? (y/n): ").strip().lower()
     if confirm == 'y':
         delete_task_by_id(task_id)
         print(f"Task ID {task_id} has been deleted.")
+        logging.info(f"Deleted task with ID {task_id}.")
     else:
         print("Deletion cancelled.")
+        logging.info(f"Deletion cancelled for task ID {task_id}.")
 
-if __name__ == "__main__":
+
+def prune_db():
+    """
+    Deletes the existing database file and initializes a new one.
+    """
+    confirm = input(f"Are you sure you want to completely erase the database and start fresh? (y/n): ").strip().lower()
+    if confirm != 'y':
+        print("Prune database operation cancelled.")
+        logging.info("Prune database operation cancelled by user.")
+        return
+
+    # Attempt to delete the database file
+    try:
+        if os.path.exists(DB_PATH):
+            os.remove(DB_PATH)
+            print(f"Database '{DB_PATH}' has been deleted.")
+            logging.info(f"Deleted database file at '{DB_PATH}'.")
+        else:
+            print(f"No database file found at '{DB_PATH}'.")
+            logging.warning(f"Attempted to delete non-existent database file at '{DB_PATH}'.")
+
+        # Re-initialize the database
+        initialize_db()
+        print("A new database has been created.")
+        logging.info("Initialized a new database.")
+    except Exception as e:
+        print(f"An error occurred while pruning the database: {e}")
+        logging.error(f"Error pruning database: {e}")
+
+
+def main():
     initialize_db()
     logging.info("Application started.")
 
     parser = argparse.ArgumentParser(
         description="TaskStrike - Pomodoro-style timer with task logging."
     )
+
+    # Define mutually exclusive group to prevent conflicting arguments
+    group = parser.add_mutually_exclusive_group()
+
+    # Task management arguments
+    group.add_argument("--add-task", "-a", action="store_true", help="Add a task to the to-do list.")
+    group.add_argument("--show-history", "-s", action="store_true", help="Display the task history.")
+    group.add_argument("--show-todo", "-t", action="store_true", help="Display the to-do list.")
+    group.add_argument("--delete-task", "-d", type=int, help="Delete a task from the history by ID.")
+    group.add_argument("--prune-db", "-p", action="store_true",
+                       help="Completely remove the database and create a new one.")
+
+    # Positional arguments for starting the timer
     parser.add_argument("task_name", nargs="?", type=str, help="Name of the task.")
     parser.add_argument(
         "duration", nargs="?", type=str, help="Duration of the task in minutes or MM:SS format."
     )
-    parser.add_argument(
-        "--add-task", "-a", action="store_true", help="Add a task to the to-do list."
-    )
-    parser.add_argument(
-        "--show-history", "-s", action="store_true", help="Display the task history."
-    )
-    parser.add_argument(
-        "--show-todo", "-t", action="store_true", help="Display the to-do list."
-    )
-    parser.add_argument(
-        "--delete-task", "-d", type=int, help="Delete a task from the history by ID."
-    )
 
     args = parser.parse_args()
 
-    if args.show_history:
+    if args.prune_db:
+        prune_db()
+    elif args.show_history:
         show_history()
     elif args.show_todo:
         show_todo_list()
@@ -154,6 +198,7 @@ if __name__ == "__main__":
     elif args.add_task:
         add_task(args.task_name, args.duration)
     else:
+        # Starting the timer
         task_name = args.task_name or "Unnamed Task"
         duration_input = args.duration or str(DEFAULT_DURATION)
         try:
@@ -162,3 +207,14 @@ if __name__ == "__main__":
             timer.start()
         except argparse.ArgumentTypeError as e:
             print(e)
+            logging.error(f"Failed to start timer: {e}")
+            sys.exit(1)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nApplication interrupted by user.")
+        logging.info("Application interrupted by user.")
+        sys.exit(0)
